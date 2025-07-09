@@ -1,93 +1,100 @@
 import React from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
-import { Heart, User, LogOut, Shield, Search, CheckCircle, FileText } from 'lucide-react';
-import NotificationBell from './NotificationBell';
+import { Heart, User, LogOut, Shield, Search, CheckCircle, FileText, Bell } from 'lucide-react';
 
 const Header: React.FC = () => {
-  const { user, logout } = useAuth();
-  const navigate = useNavigate();
+  // Mock user state for demonstration
+  const user = null; // Change to a user object if logged in
 
   const handleLogout = () => {
-    logout();
-    navigate('/');
+    // Logout logic
+    console.log('Logging out...');
   };
 
   return (
     <header className="bg-white shadow-lg border-b border-red-100">
       <div className="container mx-auto px-4">
         <div className="flex items-center justify-between h-16">
-          <Link to="/" className="flex items-center space-x-2">
-            <div className="bg-red-500 rounded-full p-2">
-              <Heart className="h-6 w-6 text-white" />
-            </div>
+           
+            <a href="/" className="flex items-center space-x-2">
+            <img 
+              src="/logo.png" 
+              alt="Swarnandhra Lifeline Logo" 
+              className="h-12 w-12 object-contain"
+            />
             <div>
-              <h1 className="text-xl font-bold text-gray-800">Blood Donation</h1>
-              <p className="text-sm text-gray-600">Swarnandhra College</p>
+              <h1 className="text-xl font-bold text-gray-800">Swarnandhra Lifeline</h1>
+              <p className="text-sm text-gray-600">Donate Blood, Save Lives</p>
             </div>
-          </Link>
+          </a>
 
           <nav className="hidden md:flex items-center space-x-8">
-            <Link to="/" className="text-gray-700 hover:text-red-500 transition-colors">
+            <a href="/" className="text-gray-700 hover:text-red-500 transition-colors">
               Home
-            </Link>
-            <Link to="/search" className="text-gray-700 hover:text-red-500 transition-colors flex items-center">
+            </a>
+            <a href="/search" className="text-gray-700 hover:text-red-500 transition-colors flex items-center">
               <Search className="h-4 w-4 mr-1" />
               Search Donors
-            </Link>
-            <Link to="/blood-request" className="text-gray-700 hover:text-red-500 transition-colors">
+            </a>
+            <a href="/blood-request" className="text-gray-700 hover:text-red-500 transition-colors">
               Request Blood
-            </Link>
+            </a>
             {user && (
-              <Link to="/blood-requests" className="text-gray-700 hover:text-red-500 transition-colors flex items-center">
+              <a href="/blood-requests" className="text-gray-700 hover:text-red-500 transition-colors flex items-center">
                 <FileText className="h-4 w-4 mr-1" />
                 Blood Requests
-              </Link>
+              </a>
             )}
           </nav>
 
           <div className="flex items-center space-x-4">
             {user ? (
               <>
-                <NotificationBell />
+                {/* Notification Bell */}
+                <div className="relative">
+                  <button className="relative p-2 text-gray-600 hover:text-gray-800 transition-colors">
+                    <Bell className="h-6 w-6" />
+                    <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
+                      3
+                    </span>
+                  </button>
+                </div>
                 
                 <div className="flex items-center space-x-2">
                   <User className="h-5 w-5 text-gray-600" />
-                  <span className="text-gray-700">{user.fullName}</span>
+                  <span className="text-gray-700">John Doe</span>
                 </div>
                 
-                {user.role === 'admin' && (
-                  <div className="flex items-center space-x-2">
-                    <Link 
-                      to="/admin" 
-                      className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition-colors flex items-center"
-                    >
-                      <Shield className="h-4 w-4 mr-2" />
-                      Admin
-                    </Link>
-                    <Link 
-                      to="/admin/verification" 
-                      className="bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600 transition-colors flex items-center"
-                    >
-                      <CheckCircle className="h-4 w-4 mr-2" />
-                      Verify
-                    </Link>
-                    <Link 
-                      to="/admin/blood-requests" 
-                      className="bg-purple-500 text-white px-4 py-2 rounded-lg hover:bg-purple-600 transition-colors flex items-center"
-                    >
-                      <FileText className="h-4 w-4 mr-2" />
-                      Requests
-                    </Link>
-                  </div>
-                )}
+                {/* Admin Links */}
+                <div className="flex items-center space-x-2">
+                  <a 
+                    href="/admin" 
+                    className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition-colors flex items-center"
+                  >
+                    <Shield className="h-4 w-4 mr-2" />
+                    Admin
+                  </a>
+                  <a 
+                    href="/admin/verification" 
+                    className="bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600 transition-colors flex items-center"
+                  >
+                    <CheckCircle className="h-4 w-4 mr-2" />
+                    Verify
+                  </a>
+                  <a 
+                    href="/admin/blood-requests" 
+                    className="bg-purple-500 text-white px-4 py-2 rounded-lg hover:bg-purple-600 transition-colors flex items-center"
+                  >
+                    <FileText className="h-4 w-4 mr-2" />
+                    Requests
+                  </a>
+                </div>
                 
-                <Link 
-                  to="/donor-profile" 
+                <a 
+                  href="/donor-profile" 
                   className="bg-red-500 text-white px-4 py-2 rounded-lg hover:bg-red-600 transition-colors"
                 >
                   Profile
-                </Link>
+                </a>
                 
                 <button 
                   onClick={handleLogout}
@@ -98,18 +105,18 @@ const Header: React.FC = () => {
               </>
             ) : (
               <div className="flex items-center space-x-4">
-                <Link 
-                  to="/login" 
+                <a 
+                  href="/login" 
                   className="text-gray-700 hover:text-red-500 transition-colors"
                 >
                   Login
-                </Link>
-                <Link 
-                  to="/register" 
+                </a>
+                <a 
+                  href="/register" 
                   className="bg-red-500 text-white px-4 py-2 rounded-lg hover:bg-red-600 transition-colors"
                 >
                   Register
-                </Link>
+                </a>
               </div>
             )}
           </div>

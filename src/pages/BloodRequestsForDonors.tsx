@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { Heart, AlertCircle, Clock, CheckCircle, Phone, Mail, MapPin, Calendar, Upload, FileText, Eye, Download, UserPlus } from 'lucide-react';
+import { Heart, AlertCircle, Clock, CheckCircle, Phone, Mail, MapPin, Calendar, Upload, FileText, Eye, Download, UserPlus, X } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 interface BloodRequest {
@@ -42,6 +42,10 @@ const BloodRequestsForDonors: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'available' | 'assigned'>('available');
   const [responding, setResponding] = useState<string | null>(null);
   const [uploadingProof, setUploadingProof] = useState<string | null>(null);
+  const [showResponseModal, setShowResponseModal] = useState(false);
+  const [selectedRequest, setSelectedRequest] = useState<BloodRequest | null>(null);
+  const [responseText, setResponseText] = useState('');
+  const [responseType, setResponseType] = useState<'accepted' | 'rejected'>('accepted');
 
   useEffect(() => {
     checkDonorStatus();
@@ -88,18 +92,30 @@ const BloodRequestsForDonors: React.FC = () => {
     }
   };
 
-  const respondToRequest = async (requestId: string, status: 'accepted' | 'rejected', response?: string) => {
-    setResponding(requestId);
+  const handleResponse = (request: BloodRequest, type: 'accepted' | 'rejected') => {
+    setSelectedRequest(request);
+    setResponseType(type);
+    setResponseText('');
+    setShowResponseModal(true);
+  };
+
+  const submitResponse = async () => {
+    if (!selectedRequest) return;
+
+    setResponding(selectedRequest._id);
     try {
       await axios.post('http://localhost:5000/api/requests/respond', {
-        requestId,
-        status,
-        response
+        requestId: selectedRequest._id,
+        status: responseType,
+        response: responseText
       });
       
       await fetchBloodRequests();
       await fetchMyAssignedRequests();
-      setError(''); // Clear any previous errors
+      setShowResponseModal(false);
+      setSelectedRequest(null);
+      setResponseText('');
+      setError('');
       
     } catch (err: any) {
       setError(err.response?.data?.message || 'Failed to respond to request');
@@ -234,13 +250,13 @@ const BloodRequestsForDonors: React.FC = () => {
       </div>
 
       {error && (
-        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
-          {error}
+        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg flex items-center justify-between">
+          <span>{error}</span>
           <button 
             onClick={() => setError('')}
-            className="ml-2 text-red-500 hover:text-red-700"
+            className="text-red-500 hover:text-red-700"
           >
-            ✕
+            <X className="h-4 w-4" />
           </button>
         </div>
       )}
@@ -334,19 +350,19 @@ const BloodRequestsForDonors: React.FC = () => {
                       {!isRequestExpired(request.requiredDate) && (
                         <div className="flex space-x-3">
                           <button
-                            onClick={() => respondToRequest(request._id, 'accepted')}
+                            onClick={() => handleResponse(request, 'accepted')}
                             disabled={responding === request._id}
                             className="bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600 transition-colors disabled:opacity-50 flex items-center"
                           >
                             <CheckCircle className="h-4 w-4 mr-2" />
-                            {responding === request._id ? 'Accepting...' : 'Accept'}
+                            {responding === request._id ? 'Processing...' : 'Accept'}
                           </button>
                           <button
-                            onClick={() => respondToRequest(request._id, 'rejected', 'Not available at this time')}
+                            onClick={() => handleResponse(request, 'rejected')}
                             disabled={responding === request._id}
                             className="bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600 transition-colors disabled:opacity-50 flex items-center"
                           >
-                            <Clock className="h-4 w-4 mr-2" />
+                            <X className="h-4 w-4 mr-2" />
                             Decline
                           </button>
                         </div>
@@ -418,14 +434,14 @@ const BloodRequestsForDonors: React.FC = () => {
                         {myAssignment?.status === 'pending' && !isRequestExpired(request.requiredDate) && (
                           <div className="flex space-x-3 mb-4">
                             <button
-                              onClick={() => respondToRequest(request._id, 'accepted')}
+                              onClick={() => handleResponse(request, 'accepted')}
                               disabled={responding === request._id}
                               className="bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600 transition-colors disabled:opacity-50"
                             >
-                              {responding === request._id ? 'Accepting...' : 'Accept Assignment'}
+                              {responding === request._id ? 'Processing...' : 'Accept Assignment'}
                             </button>
                             <button
-                              onClick={() => respondToRequest(request._id, 'rejected')}
+                              onClick={() => handleResponse(request, 'rejected')}
                               disabled={responding === request._id}
                               className="bg-red-500 text-white px-4 py-2 rounded-lg hover:bg-red-600 transition-colors disabled:opacity-50"
                             >
@@ -549,6 +565,19 @@ const BloodRequestsForDonors: React.FC = () => {
                           </div>
                         )}
 
+                        {/* Rejected Status */}
+                        {myAssignment?.status === 'rejected' && (
+                          <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-4">
+                            <div className="flex items-center space-x-2 mb-2">
+                              <X className="h-5 w-5 text-red-500" />
+                              <h4 className="font-semibold text-red-800">Assignment Declined</h4>
+                            </div>
+                            <p className="text-sm text-red-700">
+                              You have declined this blood donation assignment.
+                            </p>
+                          </div>
+                        )}
+
                         {myAssignment?.response && (
                           <div className="mt-3 p-3 bg-gray-50 rounded-lg">
                             <p className="text-sm text-gray-600">
@@ -565,6 +594,73 @@ const BloodRequestsForDonors: React.FC = () => {
           )}
         </div>
       </div>
+
+      {/* Response Modal */}
+      {showResponseModal && selectedRequest && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-xl p-6 w-full max-w-md">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold">
+                {responseType === 'accepted' ? 'Accept Request' : 'Decline Request'}
+              </h3>
+              <button
+                onClick={() => setShowResponseModal(false)}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <div className="mb-4">
+              <p className="text-sm text-gray-600 mb-2">
+                <strong>Patient:</strong> {selectedRequest.patientName}
+              </p>
+              <p className="text-sm text-gray-600 mb-2">
+                <strong>Blood Group:</strong> {selectedRequest.bloodGroup}
+              </p>
+              <p className="text-sm text-gray-600">
+                <strong>Hospital:</strong> {selectedRequest.hospital}
+              </p>
+            </div>
+
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                {responseType === 'accepted' ? 'Additional Message (Optional)' : 'Reason for Declining'}
+              </label>
+              <textarea
+                value={responseText}
+                onChange={(e) => setResponseText(e.target.value)}
+                placeholder={responseType === 'accepted' 
+                  ? 'Any additional information...' 
+                  : 'Please provide a reason for declining'
+                }
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                rows={3}
+              />
+            </div>
+
+            <div className="flex justify-end space-x-3">
+              <button
+                onClick={() => setShowResponseModal(false)}
+                className="px-4 py-2 text-gray-600 hover:text-gray-800"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={submitResponse}
+                disabled={responding === selectedRequest._id}
+                className={`px-4 py-2 rounded-lg text-white font-medium transition-colors ${
+                  responseType === 'accepted'
+                    ? 'bg-green-500 hover:bg-green-600'
+                    : 'bg-red-500 hover:bg-red-600'
+                } disabled:opacity-50`}
+              >
+                {responding === selectedRequest._id ? 'Processing...' : 'Confirm'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

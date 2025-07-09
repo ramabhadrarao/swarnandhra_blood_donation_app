@@ -69,7 +69,6 @@ export const getAllDonors = async (req, res) => {
   }
 };
 
-// Add this missing function
 export const getAdminBloodRequests = async (req, res) => {
   try {
     const requests = await BloodRequest.find()

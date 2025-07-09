@@ -1,5 +1,6 @@
 import BloodRequest from '../models/BloodRequest.js';
 import Donor from '../models/Donor.js';
+import User from '../models/User.js';
 import Notification from '../models/Notification.js';
 import multer from 'multer';
 import path from 'path';
@@ -36,6 +37,17 @@ const upload = multer({
   },
   limits: { fileSize: 5 * 1024 * 1024 } // 5MB limit
 });
+
+// Helper function to get admin user ID
+const getAdminUserId = async () => {
+  try {
+    const adminUser = await User.findOne({ role: 'admin' });
+    return adminUser ? adminUser._id : null;
+  } catch (error) {
+    console.error('Error finding admin user:', error);
+    return null;
+  }
+};
 
 export const getRequestsForDonors = async (req, res) => {
   try {
@@ -124,23 +136,26 @@ export const respondToRequest = async (req, res) => {
  
     await request.save();
  
-    // Create notification for admin
-    await Notification.create({
-      recipient: 'admin', // You might want to get actual admin user ID
-      type: 'response',
-      title: 'Donor Response Received',
-      message: `${donor.user.fullName} ${status} the blood request for ${request.patientName}`,
-      relatedId: request._id
-    });
+    // Create notification for admin - Get actual admin user ID
+    const adminUserId = await getAdminUserId();
+    if (adminUserId) {
+      await Notification.create({
+        recipient: adminUserId,
+        type: 'response',
+        title: 'Donor Response Received',
+        message: `${donor.user.fullName} ${status} the blood request for ${request.patientName}`,
+        relatedId: request._id
+      });
+    }
  
     res.json({ message: 'Response recorded successfully' });
   } catch (error) {
     console.error('Respond to request error:', error);
     res.status(500).json({ message: 'Failed to respond to request', error: error.message });
   }
- };
+};
  
- export const uploadProofDocument = [
+export const uploadProofDocument = [
   upload.single('proof'),
   async (req, res) => {
     try {
@@ -152,7 +167,7 @@ export const respondToRequest = async (req, res) => {
       const userId = req.user.userId;
  
       // Find donor
-      const donor = await Donor.findOne({ user: userId });
+      const donor = await Donor.findOne({ user: userId }).populate('user');
       if (!donor) {
         return res.status(404).json({ message: 'Donor profile not found' });
       }
@@ -190,13 +205,16 @@ export const respondToRequest = async (req, res) => {
       await request.save();
  
       // Create notification for admin
-      await Notification.create({
-        recipient: 'admin', // You might want to get actual admin user ID
-        type: 'general',
-        title: 'Proof Document Uploaded',
-        message: `${donor.user?.fullName || 'A donor'} uploaded proof for donation to ${request.patientName}`,
-        relatedId: request._id
-      });
+      const adminUserId = await getAdminUserId();
+      if (adminUserId) {
+        await Notification.create({
+          recipient: adminUserId,
+          type: 'general',
+          title: 'Proof Document Uploaded',
+          message: `${donor.user?.fullName || 'A donor'} uploaded proof for donation to ${request.patientName}`,
+          relatedId: request._id
+        });
+      }
  
       res.json({
         message: 'Proof document uploaded successfully',
@@ -207,9 +225,9 @@ export const respondToRequest = async (req, res) => {
       res.status(500).json({ message: 'Failed to upload proof document', error: error.message });
     }
   }
- ];
+];
  
- export const markRequestCompleted = async (req, res) => {
+export const markRequestCompleted = async (req, res) => {
   try {
     const { requestId } = req.body;
     const userId = req.user.userId;
@@ -246,13 +264,16 @@ export const respondToRequest = async (req, res) => {
     await Promise.all([request.save(), donor.save()]);
  
     // Create notifications
-    await Notification.create({
-      recipient: 'admin', // You might want to get actual admin user ID
-      type: 'general',
-      title: 'Donation Completed',
-      message: `${donor.user.fullName} completed blood donation for ${request.patientName} at ${request.hospital}`,
-      relatedId: request._id
-    });
+    const adminUserId = await getAdminUserId();
+    if (adminUserId) {
+      await Notification.create({
+        recipient: adminUserId,
+        type: 'general',
+        title: 'Donation Completed',
+        message: `${donor.user.fullName} completed blood donation for ${request.patientName} at ${request.hospital}`,
+        relatedId: request._id
+      });
+    }
  
     // Check if all assigned donors have completed and update request status
     const allCompleted = request.assignedDonors.every(assignment => 
@@ -280,10 +301,10 @@ export const respondToRequest = async (req, res) => {
     console.error('Mark completed error:', error);
     res.status(500).json({ message: 'Failed to mark request as completed', error: error.message });
   }
- };
+};
  
- // Helper functions
- const getCompatibleBloodGroups = (donorBloodGroup) => {
+// Helper functions
+const getCompatibleBloodGroups = (donorBloodGroup) => {
   const compatibility = {
     'O-': ['O-', 'O+', 'A-', 'A+', 'B-', 'B+', 'AB-', 'AB+'],
     'O+': ['O+', 'A+', 'B+', 'AB+'],
@@ -295,9 +316,9 @@ export const respondToRequest = async (req, res) => {
     'AB+': ['AB+']
   };
   return compatibility[donorBloodGroup] || [];
- };
+};
  
- const notifyCompatibleDonors = async (bloodRequest) => {
+const notifyCompatibleDonors = async (bloodRequest) => {
   try {
     const compatibleDonors = await Donor.find({
       bloodGroup: { $in: getCompatibleBloodGroups(bloodRequest.bloodGroup) },
@@ -317,9 +338,9 @@ export const respondToRequest = async (req, res) => {
   } catch (error) {
     console.error('Error notifying donors:', error);
   }
- };
+};
  
- export const createBloodRequest = async (req, res) => {
+export const createBloodRequest = async (req, res) => {
   try {
     const requestData = req.body;
     
@@ -337,9 +358,9 @@ export const respondToRequest = async (req, res) => {
     console.error('Create blood request error:', error);
     res.status(500).json({ message: 'Failed to create blood request', error: error.message });
   }
- };
+};
  
- export const getBloodRequests = async (req, res) => {
+export const getBloodRequests = async (req, res) => {
   try {
     const requests = await BloodRequest.find()
       .populate('assignedDonors.donor', 'bloodGroup')
@@ -350,9 +371,9 @@ export const respondToRequest = async (req, res) => {
     console.error('Get blood requests error:', error);
     res.status(500).json({ message: 'Failed to get blood requests', error: error.message });
   }
- };
+};
  
- export const getBloodRequestById = async (req, res) => {
+export const getBloodRequestById = async (req, res) => {
   try {
     const { id } = req.params;
     const request = await BloodRequest.findById(id)
@@ -368,9 +389,9 @@ export const respondToRequest = async (req, res) => {
     console.error('Get blood request error:', error);
     res.status(500).json({ message: 'Failed to get blood request', error: error.message });
   }
- };
+};
  
- export const updateRequestStatus = async (req, res) => {
+export const updateRequestStatus = async (req, res) => {
   try {
     const { id } = req.params;
     const { status } = req.body;
@@ -393,9 +414,9 @@ export const respondToRequest = async (req, res) => {
     console.error('Update request status error:', error);
     res.status(500).json({ message: 'Failed to update request status', error: error.message });
   }
- };
+};
  
- export const assignDonorToRequest = async (req, res) => {
+export const assignDonorToRequest = async (req, res) => {
   try {
     const { requestId, donorId } = req.body;
  
@@ -444,4 +465,4 @@ export const respondToRequest = async (req, res) => {
     console.error('Assign donor error:', error);
     res.status(500).json({ message: 'Failed to assign donor', error: error.message });
   }
- };
+};
