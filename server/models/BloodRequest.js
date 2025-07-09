@@ -53,7 +53,8 @@ const bloodRequestSchema = new mongoose.Schema({
   assignedDonors: [{
     donor: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: 'Donor'
+      ref: 'Donor',
+      required: true
     },
     assignedAt: {
       type: Date,
@@ -63,6 +64,28 @@ const bloodRequestSchema = new mongoose.Schema({
       type: String,
       enum: ['pending', 'accepted', 'rejected', 'completed'],
       default: 'pending'
+    },
+    response: {
+      type: String,
+      default: ''
+    },
+    proofDocuments: [{
+      fileName: {
+        type: String,
+        required: true
+      },
+      filePath: {
+        type: String,
+        required: true
+      },
+      uploadedAt: {
+        type: Date,
+        default: Date.now
+      }
+    }],
+    completedAt: {
+      type: Date,
+      default: null
     }
   }],
   status: {
